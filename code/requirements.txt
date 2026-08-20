@@ -1,0 +1,6 @@
+# GPU stages on Colab (torch/torchvision are preinstalled there)
+transformers>=4.44
+diffusers>=0.30
+accelerate
+tqdm
+pillow

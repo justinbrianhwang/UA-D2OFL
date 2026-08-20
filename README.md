@@ -18,6 +18,31 @@ conditions under which adaptive weighting beats the uniform ensemble average.
 | `results/all_results.csv` | Every (setting, config, seed) run: top-1 accuracy, ECE, NLL, Brier, mean weight entropy, corr(weight, teacher-correctness), missing-prototype rate |
 | `results/teacher_quality.csv` | Per-client teacher accuracy (own-domain test / pooled global test) for each asymmetry setting |
 | `results/<setting>.json` | Raw per-setting result files, including per-client evaluation breakdowns |
+| `code/ua_d2ofl/` | Full pipeline implementation (Python / PyTorch) |
+| `code/data_prep/` | Dataset pool / manifest builders (NICO++ paths are environment-specific) |
+| `code/requirements.txt` | Python dependencies (PyTorch preinstalled separately) |
+
+## Code layout
+
+```
+code/ua_d2ofl/
+  client/        BLIP-2 captioning, CLIP prototype encoding (+ Mahalanobis
+                 filtering), local teacher training
+  server/        Stable Diffusion generation, signal cache (precompute),
+                 reliability weighting + weighted distillation (distill.py)
+  distillation/  reliability estimators and the weighted KD loss
+  data/          manifest datasets, partition builders
+  metrics/       accuracy / ECE / NLL / Brier
+  experiments/   stage runners (smoke.py), paper runs (paper_run.py),
+                 student-side temperature-scaling control (student_ts.py)
+  tests/         unit tests (python -m ua_d2ofl.tests.test_reliability)
+```
+
+Stages run as `python -m ua_d2ofl.experiments.smoke --stage
+data,captions,encode,teachers,generate,cache` followed by
+`python -m ua_d2ofl.experiments.paper_run --seed S --config C`; work
+directory, synthetic budget, and training recipe are set via `UA_*`
+environment variables (see the module headers).
 
 ## Settings
 
