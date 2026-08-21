@@ -18,9 +18,11 @@ conditions under which adaptive weighting beats the uniform ensemble average.
 | `results/all_results.csv` | Every (setting, config, seed) run: top-1 accuracy, ECE, NLL, Brier, mean weight entropy, corr(weight, teacher-correctness), missing-prototype rate |
 | `results/teacher_quality.csv` | Per-client teacher accuracy (own-domain test / pooled global test) for each asymmetry setting |
 | `results/<setting>.json` | Raw per-setting result files, including per-client evaluation breakdowns |
-| `code/ua_d2ofl/` | Full pipeline implementation (Python / PyTorch) |
+| `code/ua_d2ofl/` | Full pipeline implementation (Python / PyTorch, MIT license) |
+| `code/paper_recipe.env` | **Exact env-var training recipe used for every paper result** (module defaults are weaker legacy values) |
 | `code/data_prep/` | Dataset pool / manifest builders (NICO++ paths are environment-specific) |
 | `code/requirements.txt` | Python dependencies (PyTorch preinstalled separately) |
+| `manifests/` | The exact NICO++ train/test split manifests for every setting (paths relative to the extracted NICO_DG pool) |
 
 ## Code layout
 
@@ -70,4 +72,5 @@ synthetic transfer set (all-samples / in-support).
 
 ## License
 
-Data released under CC BY 4.0. Cite the paper above if you use it.
+Data (`results/`, `manifests/`) released under CC BY 4.0; code (`code/`)
+under MIT (see `code/LICENSE`). Cite the paper above if you use either.
