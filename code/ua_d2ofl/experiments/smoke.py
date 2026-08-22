@@ -147,6 +147,8 @@ def stage_teachers():
         out = f"{WORK}/teacher{r}.pt"
         if os.path.exists(out):
             continue
+        if "UA_TEACHER_SEED" in os.environ:  # teacher-realization resampling
+            torch.manual_seed(int(os.environ["UA_TEACHER_SEED"]) * 100 + r)
         model = train_teacher(
             m["train"][str(r)], len(m["classes"]), epochs=TEACHER_EPOCHS,
             lr=float(os.environ.get("UA_TEACHER_LR", "1e-3")),

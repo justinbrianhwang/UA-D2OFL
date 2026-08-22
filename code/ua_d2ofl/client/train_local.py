@@ -20,10 +20,13 @@ def train_teacher(samples: list[dict], num_classes: int, backbone: str = "resnet
                   device: str | None = None, num_workers: int = 4,
                   pretrained: bool = True, weight_decay: float = 0.0,
                   cosine: bool = False) -> nn.Module:
+    import os
+    num_workers = int(os.environ.get("UA_WORKERS", num_workers))
     device = device or ("cuda" if torch.cuda.is_available() else "cpu")
     model = initialize_model(backbone, num_classes, pretrained).to(device)
     loader = DataLoader(ManifestDataset(samples, TRAIN_TF), batch_size=batch_size,
-                        shuffle=True, num_workers=num_workers, pin_memory=True)
+                        shuffle=True, num_workers=num_workers, pin_memory=True,
+                        persistent_workers=num_workers > 0)
     opt = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     sched = (torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=epochs)
              if cosine else None)

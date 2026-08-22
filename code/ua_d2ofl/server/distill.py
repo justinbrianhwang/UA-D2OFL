@@ -71,6 +71,27 @@ def calibrate_cache(cache: dict, support_only: bool = False) -> dict:
     return out
 
 
+def aggregate_cache(cache: dict, mode: str, kd_temperature: float) -> dict:
+    """Robust-aggregation controls (median / trimmed mean): replace the teacher
+    ensemble with a single virtual teacher whose softened distribution equals
+    the coordinate-wise robust aggregate, so the standard weighted-KD machinery
+    applies unchanged with uniform weights over one teacher."""
+    p = torch.softmax(cache["teacher_logits"].float() / kd_temperature, dim=-1)
+    if mode == "median":
+        agg = p.median(dim=1).values
+    elif mode == "trimmed":  # drop the min and max teacher per (sample, class)
+        s, _ = p.sort(dim=1)
+        agg = s[:, 1:-1, :].mean(1)
+    else:
+        raise ValueError(mode)
+    agg = agg / agg.sum(-1, keepdim=True)
+    out = dict(cache)
+    out["teacher_logits"] = (kd_temperature * (agg + EPS).log()).unsqueeze(1)
+    out["sims"] = torch.zeros(agg.shape[0], 1)
+    out["available"] = torch.ones(agg.shape[0], 1)
+    return out
+
+
 def _pearson(a: torch.Tensor, b: torch.Tensor) -> float:
     a, b = a.flatten().float(), b.flatten().float()
     a, b = a - a.mean(), b - b.mean()
@@ -106,6 +127,11 @@ def compute_all_weights(cache: dict, method: str, tau: float = 0.5, beta: float 
         r_mean = normalized_entropy_reliability(probs).mean(0)
         weights = torch.softmax(r_mean / tau, dim=0).expand(
             logits.shape[0], -1).clone()
+    elif method == "agreement":
+        # robust-aggregation control: weight by agreement with the ensemble vote
+        preds = logits.argmax(-1)
+        agree = (preds.unsqueeze(2) == preds.unsqueeze(1)).float().mean(2)
+        weights = torch.softmax(agree / tau, dim=1)
     elif method == "labelce":
         # CA-MKD-style: weight by teacher log-likelihood of the generated label
         logp = torch.log_softmax(logits, dim=-1)
@@ -176,10 +202,35 @@ def train_global(syn_samples: list[dict], cache: dict, weights: torch.Tensor,
     Uses the deterministic TEST_TF transform so student inputs are pixel-
     identical to the ones the cached teacher logits were computed on.
     """
+    import os
+    num_workers = int(os.environ.get("UA_WORKERS", num_workers))
     device = device or ("cuda" if torch.cuda.is_available() else "cpu")
     model = initialize_model(backbone, num_classes, pretrained).to(device)
-    loader = DataLoader(_IndexedDataset(syn_samples, TEST_TF), batch_size=batch_size,
-                        shuffle=True, num_workers=num_workers, pin_memory=True)
+    if os.environ.get("UA_PRELOAD") == "1":
+        # The distillation input transform is deterministic, so decode D_syn
+        # once per work dir and reuse the tensor cache (AV-scanning and PNG
+        # decode otherwise starve the GPU on local Windows runs).
+        from torch.utils.data import TensorDataset
+        pp = os.path.join(os.environ["UA_WORK"], "preload.pt")
+        x = None
+        if os.path.exists(pp):
+            x = torch.load(pp, map_location="cpu", weights_only=False)
+            if len(x) != len(syn_samples):
+                x = None
+        if x is None:
+            dec = DataLoader(ManifestDataset(syn_samples, TEST_TF),
+                             batch_size=256, num_workers=num_workers)
+            x = torch.cat([b for b, _ in tqdm(dec, desc="preload")])
+            torch.save(x, pp)
+        y = torch.tensor([s["label"] for s in syn_samples])
+        ds = TensorDataset(x, y, torch.arange(len(y)))
+        loader = DataLoader(ds, batch_size=batch_size, shuffle=True,
+                            num_workers=0, pin_memory=True)
+    else:
+        loader = DataLoader(_IndexedDataset(syn_samples, TEST_TF),
+                            batch_size=batch_size, shuffle=True,
+                            num_workers=num_workers, pin_memory=True,
+                            persistent_workers=num_workers > 0)
     opt = torch.optim.Adam(model.parameters(), lr=lr)
     sched = (torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=epochs)
              if cosine else None)

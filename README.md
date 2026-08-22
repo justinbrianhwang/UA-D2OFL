@@ -19,6 +19,7 @@ conditions under which adaptive weighting beats the uniform ensemble average.
 | `results/teacher_quality.csv` | Per-client teacher accuracy (own-domain test / pooled global test) for each asymmetry setting |
 | `results/<setting>.json` | Raw per-setting result files, including per-client evaluation breakdowns |
 | `code/ua_d2ofl/` | Full pipeline implementation (Python / PyTorch, MIT license) |
+| `code/agg_rev.py`, `code/agg_runc.py` | Aggregation scripts reproducing every paired test, sign test, and Holm correction in the paper from `results/<setting>.json` |
 | `code/paper_recipe.env` | **Exact env-var training recipe used for every paper result** (module defaults are weaker legacy values) |
 | `code/data_prep/` | Dataset pool / manifest builders (NICO++ paths are environment-specific) |
 | `code/requirements.txt` | Python dependencies (PyTorch preinstalled separately) |
@@ -56,7 +57,8 @@ ImageNet-pretrained ResNet-18 teachers/student.
 | `f6r` | Symmetric feature skew (client = domain, equal 100 imgs/class) |
 | `a60m` | Mild data-size asymmetry — per-client caps [100, 70, 50, 35, 25, 18] imgs/class |
 | `a60n` | Label-noise asymmetry — per-client flip rates [0, .1, .2, .3, .4, .5] |
-| `a60` | Strong data-size asymmetry — per-client caps [100, 50, 25, 12, 6, 3] imgs/class |
+| `a60` | Strong data-size asymmetry — per-client caps [100, 50, 25, 12, 6, 3] imgs/class (teacher realization t0) |
+| `a60t1`, `a60t2` | Same as `a60` with teachers re-trained under teacher seeds 1 and 2 (`UA_TEACHER_SEED`), same D_syn — full-pipeline variance check |
 | `l60_180` | Disjoint label skew (10 classes/client), 180 synthetic imgs/prototype |
 | `l6r` | Label skew under the strong training recipe, incl. per-teacher temperature-calibration variants |
 | `f60`, `l60` | Legacy runs under the original (weaker) training recipe, kept for completeness |

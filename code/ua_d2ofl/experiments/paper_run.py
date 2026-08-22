@@ -16,8 +16,8 @@ import torch
 
 from ua_d2ofl.data.dataset import ManifestDataset
 from ua_d2ofl.metrics import evaluate
-from ua_d2ofl.server.distill import (calibrate_cache, compute_all_weights,
-                                     train_global)
+from ua_d2ofl.server.distill import (aggregate_cache, calibrate_cache,
+                                     compute_all_weights, train_global)
 
 WORK = os.environ.get("UA_WORK", "/content/work_f60")
 EPOCHS = int(os.environ.get("UA_DISTILL_EPOCHS", "30"))
@@ -42,6 +42,14 @@ CONFIGS = [
     ("scalar-entropy", {}),
     ("labelce", {}),
     ("entropy|shuffled", {"shuffled": True}),
+    # robust-aggregation controls (idx 14-16)
+    ("median", {"_aggregate": "median"}),
+    ("trimmed", {"_aggregate": "trimmed"}),
+    ("agreement", {}),
+    # lambda sweep for the blend policy (idx 17-19; 0.25 is idx 6)
+    ("joint|blend0.1", {"missing_policy": "blend", "blend_lambda": 0.1}),
+    ("joint|blend0.5", {"missing_policy": "blend", "blend_lambda": 0.5}),
+    ("joint|blend0.75", {"missing_policy": "blend", "blend_lambda": 0.75}),
 ]
 
 
@@ -68,10 +76,15 @@ def run_seed(seed: int, config_idx: int | None = None) -> None:
             continue
         kw = dict(kw)
         cal = kw.pop("_calibrate", None)
-        cache_eff = (calibrate_cache(cache, support_only=cal == "support")
-                     if cal else cache)
+        agg = kw.pop("_aggregate", None)
+        cache_eff = cache
+        if cal:
+            cache_eff = calibrate_cache(cache, support_only=cal == "support")
+        elif agg:
+            cache_eff = aggregate_cache(cache, agg, KD_T)
         sizes = [len(m["train"][str(r)]) for r in range(len(m["train"]))]
-        weights, diag = compute_all_weights(cache_eff, name.split("|")[0],
+        method = "uniform" if agg else name.split("|")[0]
+        weights, diag = compute_all_weights(cache_eff, method,
                                             tau=TAU, beta=BETA,
                                             client_sizes=sizes, **kw)
         torch.manual_seed(seed)
