@@ -59,3 +59,16 @@ for k, i in enumerate(order):
     run = max(run, min(1, (m - k) * ps[i])); adj[i] = run
 for n, p, a in zip(names, ps, adj):
     print(f"{n:<24} p={p:.3f} holm={a:.3f} {'*' if a < .05 else ''}")
+
+print("\n===== realization-level (n=3 realization means; primary test in the paper) =====")
+pr = {}
+for cfg in ["entropy", "sizeprop"]:
+    per = [st.mean(acc(by, cfg, s) - acc(by, "uniform", s) for s in ("s0", "s1")) for by in reals.values()]
+    t, p = stats.ttest_1samp(per, 0); se = st.stdev(per) / 3 ** 0.5; h = stats.t.ppf(.975, 2) * se
+    print(f"{cfg:<9} acc  mean {100*st.mean(per):+.2f}pp CI [{100*(st.mean(per)-h):+.2f},{100*(st.mean(per)+h):+.2f}] t={t:.2f} p={p:.3f}")
+    pr[cfg + " acc"] = p
+per = [st.mean(by[f"entropy|{s}"]["overall"]["ece"] - by[f"uniform|{s}"]["overall"]["ece"] for s in ("s0", "s1")) for by in reals.values()]
+t, p = stats.ttest_1samp(per, 0); print(f"entropy   dECE mean {st.mean(per):+.4f} p={p:.3f}"); pr["entropy ece"] = p
+run = 0
+for k, n in enumerate(sorted(pr, key=pr.get)):
+    run = max(run, min(1, (3 - k) * pr[n])); print(f"  Holm(3) {n:<12} p={pr[n]:.3f} -> {run:.3f}")

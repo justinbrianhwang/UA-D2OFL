@@ -7,11 +7,11 @@ import statistics as st
 from scipy import stats
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ART = os.path.join(HERE, "artifacts_paper")
+ART = os.path.join(HERE, "..", "results")  # results/<setting>.json
 
 
 def load(tag):
-    res = json.load(open(os.path.join(ART, tag, "results_paper.json")))
+    res = json.load(open(os.path.join(ART, tag + ".json")))
     by = {}
     for k, v in res.items():
         *cfg, s = k.split("|")
