@@ -2,7 +2,7 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22056602.svg)](https://doi.org/10.5281/zenodo.22056602)
 
-**Large artifacts** (synthetic transfer sets D_syn, all teacher models, and the signal caches `cache.pt` for every setting; ~15 GB) are archived on Zenodo: https://doi.org/10.5281/zenodo.22056602. Every weighting scheme in the paper is a deterministic function of `cache.pt`, so all tables can be recomputed from the Zenodo caches without a GPU.
+**Large artifacts** (synthetic transfer sets D_syn, all teacher models, and the signal caches `cache.pt` for every setting; ~15 GB) are archived on Zenodo: https://doi.org/10.5281/zenodo.22056602. Every weighting scheme in the paper is a deterministic function of `cache.pt`, so every weighting scheme's per-sample weights and diagnostics (H_w, corr(w, correct)) can be recomputed from the Zenodo caches on CPU; re-running the student distillations behind the accuracy tables additionally needs D_syn (also on Zenodo), the NICO++ test split, and a GPU.
 
 Full experimental results for the paper:
 

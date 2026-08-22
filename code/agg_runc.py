@@ -72,3 +72,9 @@ t, p = stats.ttest_1samp(per, 0); print(f"entropy   dECE mean {st.mean(per):+.4f
 run = 0
 for k, n in enumerate(sorted(pr, key=pr.get)):
     run = max(run, min(1, (3 - k) * pr[n])); print(f"  Holm(3) {n:<12} p={pr[n]:.3f} -> {run:.3f}")
+
+print("\n===== power of the pooled (n=6) entropy test to detect +0.51pp =====")
+from scipy.stats import nct
+pooled = [acc(by, "entropy", s) - acc(by, "uniform", s) for by in reals.values() for s in ("s0", "s1")]
+sd = st.stdev(pooled); ncp = 0.0051 / (sd / 6 ** 0.5); crit = stats.t.ppf(.975, 5)
+print(f"sd={100*sd:.2f}pp  power={1 - nct.cdf(crit, 5, ncp) + nct.cdf(-crit, 5, ncp):.2f}")
