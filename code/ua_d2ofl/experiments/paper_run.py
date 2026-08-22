@@ -50,6 +50,8 @@ CONFIGS = [
     ("joint|blend0.1", {"missing_policy": "blend", "blend_lambda": 0.1}),
     ("joint|blend0.5", {"missing_policy": "blend", "blend_lambda": 0.5}),
     ("joint|blend0.75", {"missing_policy": "blend", "blend_lambda": 0.75}),
+    # learned gate (IntactOFL-style), idx 20
+    ("gate", {}),
 ]
 
 
@@ -84,6 +86,7 @@ def run_seed(seed: int, config_idx: int | None = None) -> None:
             cache_eff = aggregate_cache(cache, agg, KD_T)
         sizes = [len(m["train"][str(r)]) for r in range(len(m["train"]))]
         method = "uniform" if agg else name.split("|")[0]
+        torch.manual_seed(seed)  # gate training is stochastic; others ignore it
         weights, diag = compute_all_weights(cache_eff, method,
                                             tau=TAU, beta=BETA,
                                             client_sizes=sizes, **kw)

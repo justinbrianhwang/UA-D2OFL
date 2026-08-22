@@ -92,6 +92,36 @@ def aggregate_cache(cache: dict, mode: str, kd_temperature: float) -> dict:
     return out
 
 
+def train_gate(cache: dict, epochs: int = 30, hidden: int = 256,
+               lr: float = 1e-3) -> torch.Tensor:
+    """IntactOFL-style learned gate: an MLP on the cached CLIP image embedding
+    outputs per-sample teacher weights, trained on D_syn to minimise the NLL of
+    the weighted mixture of (frozen) teacher distributions against the
+    generated label. Returns weights [N, R]. The only supervision a one-shot
+    server has is the generated label, so this is the learned analogue of the
+    labelce control; it is in-protocol (no extra communication)."""
+    x = cache["image_embeds"].float()
+    x = x / x.norm(dim=-1, keepdim=True)
+    p = torch.softmax(cache["teacher_logits"].float(), dim=-1)  # [N, R, C]
+    y = cache["labels"]
+    gate = torch.nn.Sequential(torch.nn.Linear(x.shape[1], hidden), torch.nn.ReLU(),
+                               torch.nn.Linear(hidden, p.shape[1]))
+    opt = torch.optim.Adam(gate.parameters(), lr=lr, weight_decay=1e-4)
+    n = x.shape[0]
+    for _ in range(epochs):
+        perm = torch.randperm(n)
+        for i in range(0, n, 256):
+            idx = perm[i:i + 256]
+            w = torch.softmax(gate(x[idx]), dim=-1)  # [B, R]
+            mix = (w.unsqueeze(-1) * p[idx]).sum(1)  # [B, C]
+            loss = torch.nn.functional.nll_loss((mix + EPS).log(), y[idx])
+            opt.zero_grad()
+            loss.backward()
+            opt.step()
+    with torch.no_grad():
+        return torch.softmax(gate(x), dim=-1)
+
+
 def _pearson(a: torch.Tensor, b: torch.Tensor) -> float:
     a, b = a.flatten().float(), b.flatten().float()
     a, b = a - a.mean(), b - b.mean()
@@ -132,6 +162,9 @@ def compute_all_weights(cache: dict, method: str, tau: float = 0.5, beta: float 
         preds = logits.argmax(-1)
         agree = (preds.unsqueeze(2) == preds.unsqueeze(1)).float().mean(2)
         weights = torch.softmax(agree / tau, dim=1)
+    elif method == "gate":
+        # IntactOFL-style learned gate (see train_gate)
+        weights = train_gate(cache)
     elif method == "labelce":
         # CA-MKD-style: weight by teacher log-likelihood of the generated label
         logp = torch.log_softmax(logits, dim=-1)
