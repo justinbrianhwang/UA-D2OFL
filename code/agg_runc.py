@@ -69,9 +69,11 @@ for cfg in ["entropy", "sizeprop"]:
     pr[cfg + " acc"] = p
 per = [st.mean(by["entropy"][s]["overall"]["ece"] - by["uniform"][s]["overall"]["ece"] for s in ("s0", "s1")) for by in reals.values()]
 t, p = stats.ttest_1samp(per, 0); print(f"entropy   dECE mean {st.mean(per):+.4f} p={p:.3f}"); pr["entropy ece"] = p
+per = [st.mean(acc(by, "gate", s) - acc(by, "uniform", s) for s in ("s0", "s1")) for by in reals.values()]
+t, p = stats.ttest_1samp(per, 0); print(f"gate      acc  mean {100*st.mean(per):+.2f}pp p={p:.3f}"); pr["gate acc"] = p
 run = 0
 for k, n in enumerate(sorted(pr, key=pr.get)):
-    run = max(run, min(1, (3 - k) * pr[n])); print(f"  Holm(3) {n:<12} p={pr[n]:.3f} -> {run:.3f}")
+    run = max(run, min(1, (len(pr) - k) * pr[n])); print(f"  Holm({len(pr)}) {n:<12} p={pr[n]:.3f} -> {run:.3f}")
 
 print("\n===== power of the pooled (n=6) entropy test to detect +0.51pp =====")
 from scipy.stats import nct
