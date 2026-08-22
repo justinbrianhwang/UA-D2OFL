@@ -1,5 +1,9 @@
 # UA-D²OFL — Experimental Results
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22056602.svg)](https://doi.org/10.5281/zenodo.22056602)
+
+**Large artifacts** (synthetic transfer sets D_syn, all teacher models, and the signal caches `cache.pt` for every setting; ~15 GB) are archived on Zenodo: https://doi.org/10.5281/zenodo.22056602. Every weighting scheme in the paper is a deterministic function of `cache.pt`, so all tables can be recomputed from the Zenodo caches without a GPU.
+
 Full experimental results for the paper:
 
 > **When Does Reliability-Weighted Multi-Teacher Distillation Help
